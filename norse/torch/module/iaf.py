@@ -9,7 +9,7 @@ from norse.torch.functional.iaf import (
 
 
 class IAFCell(SNNCell):
-    def __init__(self, p: IAFParameters = IAFParameters(), dt: float = 0.001):
+    def __init__(self, p: IAFParameters = IAFParameters(), dt: float = 0.001, rand_w: float = 0.5):
         r"""Feedforward step of an integrate-and-fire neuron, computing a single step
 
         .. math::
@@ -30,16 +30,20 @@ class IAFCell(SNNCell):
             dt (float): Integration timestep to use (unused, but added for compatibility)
         """
         super().__init__(iaf_feed_forward_step, self.initial_state, p, dt)
+        self.rand_w = rand_w
 
     def initial_state(self, input_tensor: torch.Tensor) -> IAFFeedForwardState:
         state = IAFFeedForwardState(
-            # v=torch.full(
-            #     input_tensor.shape,
-            #     self.p.v_reset.detach(),
-            #     device=input_tensor.device,
-            #     dtype=torch.float32,
-            # ),
-            v=self.p.v_reset.to(input_tensor.device)
+            v=(torch.rand(input_tensor.shape) * (self.p.v_th - self.p.v_reset) * self.rand_w + self.p.v_reset).to(
+                input_tensor.device
+            )
+            if self.rand_w > 0
+            else torch.full(
+                input_tensor.shape,
+                self.p.v_reset,
+                device=input_tensor.device,
+                # dtype=torch.float32,
+            )
         )
         state.v.requires_grad = True
         return state

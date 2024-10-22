@@ -79,9 +79,7 @@ def population_encode(
     out_features: int,
     scale: Union[int, torch.Tensor] = None,
     kernel: Callable[[torch.Tensor], torch.Tensor] = gaussian_rbf,
-    distance_function: Callable[
-        [torch.Tensor, torch.Tensor], torch.Tensor
-    ] = euclidean_distance,
+    distance_function: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = euclidean_distance,
 ) -> torch.Tensor:
     """
     Encodes a set of input values into population codes, such that each singular input value is represented by
@@ -159,8 +157,8 @@ def poisson_encode(
             *input_values.shape,
             device=input_values.device,
             generator=generator,
-        ).float()
-        < dt * f_max * input_values
+        )
+        > torch.exp(-dt * f_max * input_values)
     ).float()
 
 
@@ -186,10 +184,8 @@ def poisson_encode_step(
         A tensor containing binary values in .
     """
     return (
-        torch.rand(
-            *input_values.shape, device=input_values.device, generator=generator
-        ).float()
-        < dt * f_max * input_values
+        torch.rand(*input_values.shape, device=input_values.device, generator=generator)
+        > torch.exp(-dt * f_max * input_values)
     ).float()
 
 
@@ -245,9 +241,7 @@ def signed_poisson_encode_step(
     return (
         torch.sign(input_values)
         * (
-            torch.rand(
-                *input_values.shape, device=input_values.device, generator=generator
-            ).float()
+            torch.rand(*input_values.shape, device=input_values.device, generator=generator).float()
             < dt * f_max * torch.abs(input_values)
         ).float()
     )
@@ -276,9 +270,7 @@ def spike_latency_lif_encode(
     spikes = []
 
     for _ in range(seq_length):
-        z, voltage = lif_current_encoder(
-            input_current=input_current, voltage=voltage, p=p, dt=dt
-        )
+        z, voltage = lif_current_encoder(input_current=input_current, voltage=voltage, p=p, dt=dt)
         spikes.append(torch.where(mask > 0, zeros_mask, z))
         mask += z
 
